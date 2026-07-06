@@ -1,0 +1,19 @@
+{
+  "name": "@monere/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastify/http-proxy": "^11.1.2",
+    "@monere/shared": "*"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.8"
+  }
+}

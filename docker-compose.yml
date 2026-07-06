@@ -1,0 +1,155 @@
+# Monere — full micro-services stack.
+#   docker compose up -d postgres redis          → infra only (dev hybride)
+#   docker compose --profile full up --build     → whole stack
+#   docker compose --profile backup up -d        → scheduled pg_dump sidecar
+#   docker compose --profile monitoring up -d    → Prometheus
+name: monere
+
+x-service-env: &service-env
+  env_file: .env
+  environment:
+    MONERE_MODE: docker
+    DATABASE_URL: postgresql://monere_auth:${AUTH_DB_PASSWORD:-monere_auth_pw}@postgres:5432/monere?schema=identity
+    REDIS_URL: redis://redis:6379
+  restart: unless-stopped
+  networks: [monere]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-monere}
+      AUTH_DB_PASSWORD: ${AUTH_DB_PASSWORD:-monere_auth_pw}
+    ports: ['5432:5432']
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Creates least-privilege roles (one per bounded context)
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [monere]
+
+  redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--maxmemory', '256mb', '--maxmemory-policy', 'allkeys-lru']
+    ports: ['6379:6379']
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [monere]
+
+  minio:
+    image: minio/minio:latest
+    profiles: [full, storage]
+    command: server /data --console-address ':9001'
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-monere-minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
+    ports: ['9000:9000', '9001:9001']
+    volumes:
+      - miniodata:/data
+    networks: [monere]
+
+  # ── Application services ─────────────────────────────────
+  gateway:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: gateway } }
+    ports: ['8080:8080']
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  auth:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: auth } }
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  market:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: market } }
+    depends_on:
+      redis: { condition: service_healthy }
+
+  news:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: news } }
+    depends_on:
+      redis: { condition: service_healthy }
+
+  earnings:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: earnings } }
+    depends_on:
+      redis: { condition: service_healthy }
+
+  smart:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: smart } }
+    depends_on:
+      redis: { condition: service_healthy }
+
+  ai:
+    <<: *service-env
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/service.Dockerfile, args: { SERVICE: ai } }
+    depends_on:
+      redis: { condition: service_healthy }
+
+  web:
+    profiles: [full]
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    ports: ['5173:80']
+    depends_on: [gateway]
+    restart: unless-stopped
+    networks: [monere]
+
+  # ── Backups: pg_dump every 6h, 14-day retention ───────────
+  backup:
+    image: postgres:16-alpine
+    profiles: [backup, full]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-monere}
+    volumes:
+      - ./backups:/backups
+      - ./infra/backup/backup-loop.sh:/backup-loop.sh:ro
+    entrypoint: ['sh', '/backup-loop.sh']
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+    networks: [monere]
+
+  prometheus:
+    image: prom/prometheus:latest
+    profiles: [monitoring]
+    ports: ['9090:9090']
+    volumes:
+      - ./infra/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks: [monere]
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+
+networks:
+  monere:
+    driver: bridge

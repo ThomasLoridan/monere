@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+coverage
+backups
+apps/web/public
+apps/web/src/styles
+*.md
+package-lock.json

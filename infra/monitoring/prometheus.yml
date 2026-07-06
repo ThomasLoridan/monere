@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: monere-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - gateway:8080
+          - auth:4001
+          - market:4002
+          - news:4003
+          - earnings:4004
+          - smart:4005
+          - ai:4006

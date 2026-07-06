@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Env — secrets never committed
+.env
+.env.local
+.env.*.local
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+apps/web/dev-dist/
+
+# Prisma local database (dev fallback mode)
+services/auth/prisma/*.db
+services/auth/prisma/*.db-journal
+
+# Backups (kept out of git; ship them to object storage in prod)
+backups/
+
+# Logs
+logs/
+*.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Capacitor native shells (generated)
+apps/web/ios/
+apps/web/android/
+
+# Test coverage
+coverage/
+
+# Identifiants locaux — jamais dans Git
+docs/CREDENTIALS-LOCAL.md

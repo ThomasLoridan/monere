@@ -1,0 +1,35 @@
+{
+  "name": "monere",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monere — Finance for traders. Monorepo micro-services (gateway, auth, market, news, earnings, smart-money, ai) + frontend PWA.",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "services/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:docker": "docker compose --profile full up --build",
+    "infra:up": "docker compose up -d postgres redis",
+    "infra:down": "docker compose down",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "prettier --check \"**/*.{ts,tsx,js,mjs,json,css,md}\"",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,css,md}\"",
+    "db:generate": "npm run db:generate -w services/auth",
+    "db:migrate": "npm run db:migrate -w services/auth",
+    "db:seed": "npm run db:seed -w services/auth",
+    "backup": "bash infra/backup/backup.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.5.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}

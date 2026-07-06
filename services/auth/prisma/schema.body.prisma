@@ -1,0 +1,122 @@
+// Shared model body — scripts/gen-schema.mjs prepends the datasource block
+// (sqlite in local dev, postgresql in docker/prod) and writes schema.prisma.
+// No enums / Json columns: keeps the schema portable across both providers;
+// values are constrained by Zod at the API boundary instead.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("user") // "user" | "admin"
+  premium       Boolean   @default(false)
+  premiumSince  DateTime?
+  emailVerified Boolean   @default(false)
+  disabled      Boolean   @default(false)
+  notifPrefs    String    @default("{\"earnings\":true,\"news\":true,\"price\":true,\"smart\":true,\"breaking\":true}")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  verificationCodes VerificationCode[]
+  refreshTokens     RefreshToken[]
+  watchlist         WatchlistItem[]
+  priceAlerts       PriceAlert[]
+  following         FollowedInvestor[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+}
+
+model VerificationCode {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  purpose    String // "signup" | "reset"
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, purpose])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model WatchlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticker    String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, ticker])
+}
+
+model PriceAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticker      String
+  direction   String // "above" | "below"
+  target      Float
+  active      Boolean   @default(true)
+  triggeredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([ticker, active])
+}
+
+model FollowedInvestor {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind       String // "congress" | "billionaires" | "funds" | "insiders"
+  investorId String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, kind, investorId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String // "earnings" | "news" | "price" | "smart" | "breaking"
+  title     String
+  body      String
+  navScreen String?
+  navParams String   @default("{}")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  detail    String   @default("{}")
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+}
