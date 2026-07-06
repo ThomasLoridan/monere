@@ -54,6 +54,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: quality
     strategy:
+      fail-fast: false
       matrix:
         service: [gateway, auth, market, news, earnings, smart, ai]
     steps:

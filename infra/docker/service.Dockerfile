@@ -7,10 +7,22 @@ ARG SERVICE
 WORKDIR /app
 # Native deps for argon2 / prisma engines
 RUN apk add --no-cache python3 make g++ openssl
-COPY package.json package-lock.json* ./
+
+# npm ci validates the lockfile against EVERY workspace manifest — copy them all
+COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
-COPY services/${SERVICE}/package.json services/${SERVICE}/
-RUN npm ci --workspaces --include-workspace-root --omit=optional || npm install --workspaces --include-workspace-root
+COPY apps/web/package.json apps/web/
+COPY services/gateway/package.json services/gateway/
+COPY services/auth/package.json services/auth/
+COPY services/market/package.json services/market/
+COPY services/news/package.json services/news/
+COPY services/earnings/package.json services/earnings/
+COPY services/smart/package.json services/smart/
+COPY services/ai/package.json services/ai/
+
+# Install only the root + shared + target service dependency trees
+RUN npm ci --include-workspace-root -w packages/shared -w services/${SERVICE}
+
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY services/${SERVICE} services/${SERVICE}
