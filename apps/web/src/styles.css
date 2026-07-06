@@ -3906,3 +3906,70 @@ input[type='range'].slider::-moz-range-thumb {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+/* =====================================================
+   MONERE — desktop large & aéré + admin responsive
+   ===================================================== */
+
+/* Desktop natif : la colonne de contenu occupe l'écran au lieu
+   d'une carte format téléphone (460px) */
+[data-device='native'] .dn-main {
+  gap: 40px;
+  padding: 36px 48px;
+  justify-content: center;
+}
+[data-device='native'] .dn-content-card {
+  width: 100%;
+  max-width: 880px;
+  height: calc(100vh - 72px);
+  max-height: none;
+}
+[data-device='native'] .dn-right {
+  width: 330px;
+}
+/* Respiration horizontale du contenu dans la colonne large */
+[data-device='native'] .dn-content-card .appbar {
+  padding-left: 32px;
+  padding-right: 32px;
+}
+[data-device='native'] .dn-content-card .scroll > .screen {
+  padding-left: 12px;
+  padding-right: 12px;
+}
+[data-device='native'] .page-head h1 {
+  font-size: 44px;
+}
+/* Les grilles profitent de la largeur */
+[data-device='native'] .ratio-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+[data-device='native'] .idx-strip {
+  flex-wrap: wrap;
+}
+@media (max-width: 1240px) {
+  [data-device='native'] .dn-content-card {
+    max-width: 720px;
+  }
+  [data-device='native'] .ratio-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Tableaux admin : défilement horizontal tactile (iPhone)
+   pour que la colonne Actions reste accessible */
+.admin-table {
+  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-table table {
+  min-width: 640px;
+}
+.admin-table td {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .admin-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
