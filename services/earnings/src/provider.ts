@@ -228,9 +228,7 @@ export interface SurpriseRow {
   surprisePct: number | null;
 }
 
-export async function surpriseHistory(
-  symbol: string,
-): Promise<
+export async function surpriseHistory(symbol: string): Promise<
   | {
       available: true;
       rows: SurpriseRow[];
