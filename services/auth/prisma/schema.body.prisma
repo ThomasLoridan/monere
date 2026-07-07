@@ -25,6 +25,7 @@ model User {
   refreshTokens     RefreshToken[]
   watchlist         WatchlistItem[]
   priceAlerts       PriceAlert[]
+  earningsAlerts    EarningsAlert[]
   following         FollowedInvestor[]
   notifications     Notification[]
   auditLogs         AuditLog[]
@@ -81,6 +82,21 @@ model PriceAlert {
 
   @@index([userId])
   @@index([ticker, active])
+}
+
+model EarningsAlert {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticker    String
+  quarter   String    @default("")
+  eventDate DateTime // date de publication annoncée par la source
+  notifyAt  DateTime // eventDate - 7 jours (e-mail de rappel)
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@unique([userId, ticker, eventDate])
+  @@index([sentAt, notifyAt])
 }
 
 model FollowedInvestor {

@@ -114,6 +114,67 @@ export async function registerMeRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
+  // ── Earnings alerts (e-mail de rappel 7 jours avant) ─────
+  app.get('/me/earnings-alerts', async (req) => {
+    const alerts = await prisma.earningsAlert.findMany({
+      where: { userId: req.user.sub },
+      orderBy: { eventDate: 'asc' },
+    });
+    return { alerts };
+  });
+
+  /** Toggle : crée l'alerte si absente, la supprime sinon (même UX que la watchlist). */
+  app.post('/me/earnings-alerts/toggle', async (req) => {
+    const body = validate(
+      z.object({
+        ticker: TickerSchema,
+        eventDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date invalide (YYYY-MM-DD)'),
+        quarter: z.string().trim().max(20).optional(),
+      }),
+      req.body,
+    );
+    const eventDate = new Date(`${body.eventDate}T00:00:00.000Z`);
+    if (Number.isNaN(eventDate.getTime()) || eventDate.getTime() < Date.now() - 86_400_000) {
+      throw badRequest('La date de publication est déjà passée', 'EVENT_PAST');
+    }
+    const where = {
+      userId_ticker_eventDate: { userId: req.user.sub, ticker: body.ticker, eventDate },
+    };
+    const existing = await prisma.earningsAlert.findUnique({ where });
+    if (existing) {
+      await prisma.earningsAlert.delete({ where });
+    } else {
+      const count = await prisma.earningsAlert.count({ where: { userId: req.user.sub } });
+      if (count >= 50) throw badRequest('Limite de 50 alertes earnings atteinte', 'ALERT_LIMIT');
+      // Rappel 7 jours avant, à 08:00 UTC ; si l'événement est à moins de
+      // 7 jours, le job enverra le rappel dès son prochain passage.
+      const notifyAt = new Date(eventDate.getTime() - 7 * 86_400_000 + 8 * 3600_000);
+      await prisma.earningsAlert.create({
+        data: {
+          userId: req.user.sub,
+          ticker: body.ticker,
+          quarter: body.quarter ?? '',
+          eventDate,
+          notifyAt,
+        },
+      });
+    }
+    const alerts = await prisma.earningsAlert.findMany({
+      where: { userId: req.user.sub },
+      orderBy: { eventDate: 'asc' },
+    });
+    return { alerts, added: !existing };
+  });
+
+  app.delete('/me/earnings-alerts/:id', async (req) => {
+    const params = validate(z.object({ id: z.string().cuid() }), req.params);
+    const { count } = await prisma.earningsAlert.deleteMany({
+      where: { id: params.id, userId: req.user.sub },
+    });
+    if (count === 0) throw notFound('Alerte introuvable');
+    return { ok: true };
+  });
+
   // ── Followed investors (Smart money) ──────────────────────
   app.get('/me/following', async (req) => {
     const rows = await prisma.followedInvestor.findMany({ where: { userId: req.user.sub } });

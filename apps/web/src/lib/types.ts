@@ -227,6 +227,16 @@ export interface PriceAlert {
   createdAt: string;
 }
 
+export interface EarningsAlert {
+  id: string;
+  ticker: string;
+  quarter: string;
+  eventDate: string; // ISO
+  notifyAt: string; // ISO — envoi de l'e-mail (J-7)
+  sentAt: string | null;
+  createdAt: string;
+}
+
 export interface Notification {
   id: string;
   category: 'earnings' | 'news' | 'price' | 'smart' | 'breaking';

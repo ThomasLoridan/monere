@@ -2,15 +2,24 @@
 import React from 'react';
 import { Icon } from '../components/Icon';
 import { AppBar, StockLogo, SettingsSwitch, AlertCreateSheet, LoadingRows } from '../components/ui';
-import { useAlerts, useAlertMutations, useLiveQuotes } from '../data/hooks';
+import {
+  useAlerts,
+  useAlertMutations,
+  useLiveQuotes,
+  useEarningsAlerts,
+  useEarningsAlertMutations,
+} from '../data/hooks';
 import { useDisplayStocks } from '../data/display';
-import { fmt, cleanTicker } from '../lib/format';
+import { fmt, frDate, cleanTicker } from '../lib/format';
 import type { ScreenProps } from '../state/nav';
 import type { DisplayStock } from '../components/ui';
 
 export function AlertsScreen({ nav }: ScreenProps) {
   const { data, isLoading } = useAlerts();
   const { add, toggle, remove } = useAlertMutations();
+  const { data: earningsData } = useEarningsAlerts();
+  const { remove: removeEarnings } = useEarningsAlertMutations();
+  const earningsAlerts = earningsData?.alerts ?? [];
   const { stocks } = useDisplayStocks();
   const alerts = data?.alerts ?? [];
   const alertQuotes = useLiveQuotes(alerts.map((a) => a.ticker));
@@ -118,6 +127,48 @@ export function AlertsScreen({ nav }: ScreenProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Rappels earnings — e-mail 7 jours avant la publication */}
+      {earningsAlerts.length > 0 && (
+        <>
+          <div className="section-head" style={{ marginTop: 24 }}>
+            <div className="title">Rappels earnings (e-mail J-7)</div>
+          </div>
+          <div style={{ margin: '4px 16px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {earningsAlerts.map((a) => {
+              const meta = stocks.find(
+                (s) => s.ticker === a.ticker || s.ticker === cleanTicker(a.ticker),
+              );
+              return (
+                <div key={a.id} className="alert-row">
+                  <StockLogo stock={{ ticker: a.ticker, domain: meta?.domain }} />
+                  <div
+                    className="alert-row-main"
+                    onClick={() => nav('earnings', { ticker: a.ticker })}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="alert-row-top">
+                      <span className="alert-row-tk">{cleanTicker(a.ticker)}</span>
+                      <span className={'badge ' + (a.sentAt ? 'pos' : 'neutral')}>
+                        {a.sentAt ? 'Rappel envoyé' : 'Programmé'}
+                      </span>
+                    </div>
+                    <div className="alert-row-sub">
+                      Publication{a.quarter ? ` ${a.quarter}` : ''} le {frDate(a.eventDate)} ·
+                      e-mail le {frDate(a.notifyAt)}
+                    </div>
+                  </div>
+                  <div className="alert-row-actions">
+                    <button className="iconbtn ghost" onClick={() => removeEarnings.mutate(a.id)}>
+                      <Icon name="trash" size={16} color="var(--neg)" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {pickerOpen && (

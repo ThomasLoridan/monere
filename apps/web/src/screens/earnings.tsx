@@ -12,7 +12,7 @@ import {
   LoadingRows,
 } from '../components/ui';
 import { EpsSpreadBar } from '../components/charts';
-import { useCompanyEarnings } from '../data/hooks';
+import { useCompanyEarnings, useEarningsAlerts, useEarningsAlertMutations } from '../data/hooks';
 import { useStockMeta } from '../data/display';
 import { pct, frDate, cleanTicker } from '../lib/format';
 import { useAuth } from '../auth/AuthContext';
@@ -30,6 +30,8 @@ export function EarningsDetailScreen({
   const isPremium = Boolean(user?.premium);
   const [moreOpen, setMoreOpen] = React.useState(false);
   const { data, isLoading } = useCompanyEarnings(ticker);
+  const { data: alertsData } = useEarningsAlerts();
+  const { toggle: toggleEarningsAlert } = useEarningsAlertMutations();
 
   if (isLoading) {
     return (
@@ -81,6 +83,9 @@ export function EarningsDetailScreen({
 
   const isUpcoming = earning.status === 'upcoming';
   const d = new Date(earning.date);
+  const activeAlert = (alertsData?.alerts ?? []).find(
+    (a) => a.ticker === ticker && a.eventDate.slice(0, 10) === earning.date,
+  );
   const stats = data.history?.stats;
   const cur = (meta?.currency ?? 'USD') === 'USD' ? '$' : '€';
   const epsSurprise = earning.surprise?.eps ? parseFloat(earning.surprise.eps) : null;
@@ -218,6 +223,29 @@ export function EarningsDetailScreen({
               </div>
             )}
           </>
+        )}
+        {isUpcoming && (
+          <button
+            className={'cta' + (activeAlert ? '' : ' accent')}
+            style={{ width: '100%', marginTop: 14 }}
+            disabled={toggleEarningsAlert.isPending}
+            onClick={() =>
+              toggleEarningsAlert.mutate({
+                ticker,
+                eventDate: earning.date,
+                quarter: earning.quarter,
+              })
+            }
+          >
+            <Icon
+              name={activeAlert ? 'check' : 'bell'}
+              size={16}
+              color={activeAlert ? 'var(--ink)' : '#fff'}
+            />
+            {activeAlert
+              ? 'Rappel programmé · e-mail 1 semaine avant — toucher pour annuler'
+              : "M'alerter par e-mail 1 semaine avant"}
+          </button>
         )}
         <SourceLine source={earning.source} />
       </div>

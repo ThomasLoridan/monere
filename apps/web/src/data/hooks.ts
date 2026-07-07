@@ -18,6 +18,7 @@ import type {
   InvestorSummary,
   InsiderActivity,
   PriceAlert,
+  EarningsAlert,
   Notification,
   NewsDigest,
   SourceLink,
@@ -328,6 +329,30 @@ export function useAlertMutations() {
     onSuccess: invalidate,
   });
   return { add, toggle, remove };
+}
+
+// ── Earnings alerts (rappel e-mail 7 jours avant la publication) ─
+export function useEarningsAlerts() {
+  return useQuery({
+    queryKey: ['me', 'earnings-alerts'],
+    queryFn: () => get<{ alerts: EarningsAlert[] }>('/me/earnings-alerts'),
+  });
+}
+
+export function useEarningsAlertMutations() {
+  const qc = useQueryClient();
+  const setAlerts = (data: { alerts: EarningsAlert[] }) =>
+    qc.setQueryData(['me', 'earnings-alerts'], { alerts: data.alerts });
+  const toggle = useMutation({
+    mutationFn: (a: { ticker: string; eventDate: string; quarter?: string }) =>
+      post<{ alerts: EarningsAlert[]; added: boolean }>('/me/earnings-alerts/toggle', a),
+    onSuccess: setAlerts,
+  });
+  const remove = useMutation({
+    mutationFn: (id: string) => del(`/me/earnings-alerts/${id}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['me', 'earnings-alerts'] }),
+  });
+  return { toggle, remove };
 }
 
 export function useFollowing() {

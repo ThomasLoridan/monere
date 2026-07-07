@@ -60,3 +60,57 @@ export async function sendVerificationEmail(
   log.info({ to }, 'verification email sent');
   return { sent: true };
 }
+
+/** Rappel earnings envoyé ~7 jours avant la date de publication annoncée.
+ *  La date affichée vient de la source réelle (Finnhub/Yahoo) enregistrée
+ *  au moment où l'utilisateur a créé l'alerte. */
+export async function sendEarningsReminderEmail(
+  to: string,
+  info: { ticker: string; name?: string; dateISO: string; quarter?: string },
+): Promise<SendResult> {
+  const env = getEnv();
+  const dateFr = new Date(info.dateISO).toLocaleDateString('fr-FR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  });
+  const label = info.name ? `${info.name} (${info.ticker})` : info.ticker;
+
+  if (!env.RESEND_API_KEY) {
+    if (env.NODE_ENV === 'production') {
+      throw new Error('RESEND_API_KEY manquant — impossible d’envoyer le rappel earnings');
+    }
+    log.warn({ to, ticker: info.ticker }, 'RESEND_API_KEY absent — rappel earnings non envoyé');
+    return { sent: false };
+  }
+
+  await fetchJson('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${env.RESEND_API_KEY}` },
+    body: {
+      from: env.MAIL_FROM,
+      to: [to],
+      subject: `${info.ticker} publie ses résultats dans 1 semaine (${dateFr})`,
+      html: `
+        <div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:440px;margin:0 auto;padding:32px 24px">
+          <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">Monere</div>
+          <h1 style="font-size:18px;margin:24px 0 8px">Earnings dans 1 semaine</h1>
+          <p style="color:#555;font-size:14px;line-height:1.5">
+            <strong>${label}</strong> publie ses résultats${info.quarter ? ` (${info.quarter})` : ''}
+            le <strong>${dateFr}</strong>, selon le calendrier officiel au moment de votre alerte.
+          </p>
+          <p style="color:#555;font-size:14px;line-height:1.5">
+            Retrouvez le consensus, l'historique battre/manquer et l'impact réel des
+            précédentes publications dans l'application Monere.
+          </p>
+          <p style="color:#888;font-size:12px">Vous recevez cet e-mail car vous avez créé une
+          alerte earnings sur ${info.ticker}. Les dates peuvent être modifiées par l'émetteur —
+          vérifiez la fiche de la valeur dans l'app.</p>
+        </div>`,
+    },
+    timeoutMs: 8000,
+  });
+  log.info({ to, ticker: info.ticker }, 'earnings reminder email sent');
+  return { sent: true };
+}
