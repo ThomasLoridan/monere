@@ -44,7 +44,7 @@ app.register(async (scoped) => {
     if (!bearer) throw unauthorized();
 
     // Cache 10 min par ticker : les résumés coûtent des tokens, les news bougent peu plus vite
-    return cached(`ai:digest:${body.ticker}`, 600, async () => {
+    return cached(`ai:digest:v2:${body.ticker}`, 600, async () => {
       const [news, quote] = await Promise.all([
         getCompanyNews(body.ticker, bearer),
         getQuote(body.ticker, bearer),

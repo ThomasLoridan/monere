@@ -41,9 +41,15 @@ export interface NewsDigestItem {
   sourceUrl: string;
 }
 
+export interface OutlookHorizon {
+  horizon: '1j' | '3j' | '5j' | '1M' | '3M';
+  scenario: string;
+}
+
 export interface NewsDigest {
   overview: string;
   items: NewsDigestItem[];
+  outlook: { horizons: OutlookHorizon[]; caveat: string };
   dataQuality: string;
 }
 
@@ -73,12 +79,42 @@ const DIGEST_SCHEMA = {
         additionalProperties: false,
       },
     },
+    outlook: {
+      type: 'object',
+      description:
+        "Perspectives d'évolution possibles du cours, déduites UNIQUEMENT des actualités citées",
+      properties: {
+        horizons: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              horizon: { type: 'string', enum: ['1j', '3j', '5j', '1M', '3M'] },
+              scenario: {
+                type: 'string',
+                description:
+                  'Scénario qualitatif pour cet horizon fondé sur les actualités citées ; si les sources ne permettent rien de dire, écrire explicitement « aucun signal dans les sources »',
+              },
+            },
+            required: ['horizon', 'scenario'],
+            additionalProperties: false,
+          },
+        },
+        caveat: {
+          type: 'string',
+          description:
+            'Rappel des limites : scénarios qualitatifs issus des seules actualités citées, pas une prédiction ni un conseil en investissement',
+        },
+      },
+      required: ['horizons', 'caveat'],
+      additionalProperties: false,
+    },
     dataQuality: {
       type: 'string',
       description: 'Note sur la fraîcheur/complétude des données utilisées',
     },
   },
-  required: ['overview', 'items', 'dataQuality'],
+  required: ['overview', 'items', 'outlook', 'dataQuality'],
   additionalProperties: false,
 } as const;
 
@@ -113,7 +149,9 @@ COTATION ACTUELLE : ${input.quote ? `${input.quote.price} ${input.quote.currency
 ACTUALITÉS RÉCENTES (7 derniers jours, sources réelles) :
 ${input.news.length === 0 ? 'AUCUNE — réponds que les données sont indisponibles.' : input.news.map((n, i) => `${i + 1}. [${n.source}] il y a ${n.hoursAgo}h — ${n.headline}\n   Résumé: ${n.summary.slice(0, 300)}\n   URL: ${n.url}`).join('\n')}
 
-Sélectionne les 3 à 5 actualités les plus susceptibles d'impacter le cours de bourse, explique pourquoi, et cite l'URL exacte de chacune.`,
+Sélectionne les 3 à 5 actualités les plus susceptibles d'impacter le cours de bourse, explique pourquoi, et cite l'URL exacte de chacune.
+
+Termine par des perspectives d'évolution possibles du cours aux horizons 1j, 3j, 5j, 1M et 3M, déduites UNIQUEMENT des actualités citées ci-dessus (catalyseurs datés, tendances sectorielles mentionnées, etc.). Pour chaque horizon : un scénario qualitatif d'une ou deux phrases. Si les sources ne permettent rien d'affirmer pour un horizon, écris « aucun signal dans les sources ». N'invente ni chiffre ni objectif de cours ; ce ne sont pas des prédictions ni des conseils.`,
       },
     ],
   });

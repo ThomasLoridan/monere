@@ -13,8 +13,9 @@ import type { Nav } from '../state/nav';
 const DN_TABS = [
   { id: 'home', label: 'Marchés', icon: 'home' },
   { id: 'watch', label: 'Favoris', icon: 'star' },
+  { id: 'news', label: 'Actualités', icon: 'globe' },
   { id: 'calendar', label: 'Earnings', icon: 'cal' },
-  { id: 'smart', label: 'Suivi', icon: 'users' },
+  { id: 'smart', label: 'Smart money', icon: 'users' },
   { id: 'settings', label: 'Réglages', icon: 'cog' },
 ] as const;
 
@@ -103,38 +104,64 @@ function DesktopWidgets({ nav }: { nav: Nav }) {
   const { data: earningsData } = useEarningsCalendar(symbols.length ? symbols : undefined);
   const { data: newsData } = useNewsFeed(symbols.slice(0, 6));
 
-  const movers = [...stocks]
-    .filter((s) => s.changePct != null)
-    .sort((a, b) => Math.abs(b.changePct!) - Math.abs(a.changePct!))
-    .slice(0, 4);
-  const upcoming = (earningsData?.available ? earningsData.events : [])
-    .filter((e) => e.status === 'upcoming')
+  const withPct = [...stocks].filter((s) => s.changePct != null);
+  const gainers = withPct
+    .filter((s) => s.changePct! > 0)
+    .sort((a, b) => b.changePct! - a.changePct!)
     .slice(0, 3);
+  const losers = withPct
+    .filter((s) => s.changePct! < 0)
+    .sort((a, b) => a.changePct! - b.changePct!)
+    .slice(0, 3);
+  // Marché d'une valeur : US si symbole sans suffixe de place (.PA, .DE, .L…)
+  const marketOf = (ticker: string) => (ticker.includes('.') ? 'Europe' : 'US');
+  const upcomingAll = (earningsData?.available ? earningsData.events : []).filter(
+    (e) => e.status === 'upcoming',
+  );
+  const upcomingByMarket = (['US', 'Europe'] as const)
+    .map((m) => ({
+      market: m,
+      events: upcomingAll.filter((e) => marketOf(e.ticker) === m).slice(0, 3),
+    }))
+    .filter((g) => g.events.length > 0);
   const headlines = (newsData?.available ? newsData.items : []).slice(0, 4);
 
   return (
     <>
       <div className="dn-widget">
         <div className="dn-widget-title">Plus fortes variations</div>
-        {movers.map((s) => {
-          const up = (s.changePct ?? 0) >= 0;
-          return (
-            <button
-              key={s.ticker}
-              className="dn-widget-row"
-              onClick={() => nav('stock', { ticker: s.ticker })}
-            >
-              <StockLogo
-                stock={s}
-                style={{ width: 26, height: 26, fontSize: 10, borderRadius: 8 }}
-              />
-              <span className="dn-widget-tk">{cleanTicker(s.ticker)}</span>
-              <span className={'dn-widget-d num ' + (up ? 'delta-up' : 'delta-down')}>
-                {pct(s.changePct)}
-              </span>
-            </button>
-          );
-        })}
+        {(
+          [
+            { label: 'Hausses', rows: gainers },
+            { label: 'Baisses', rows: losers },
+          ] as const
+        ).map(
+          (g) =>
+            g.rows.length > 0 && (
+              <React.Fragment key={g.label}>
+                <div className="dn-widget-sub">{g.label}</div>
+                {g.rows.map((s) => {
+                  const up = (s.changePct ?? 0) >= 0;
+                  return (
+                    <button
+                      key={s.ticker}
+                      className="dn-widget-row"
+                      onClick={() => nav('stock', { ticker: s.ticker })}
+                    >
+                      <StockLogo
+                        stock={s}
+                        style={{ width: 26, height: 26, fontSize: 10, borderRadius: 8 }}
+                      />
+                      <span className="dn-widget-tk">{cleanTicker(s.ticker)}</span>
+                      <span className={'dn-widget-d num ' + (up ? 'delta-up' : 'delta-down')}>
+                        {pct(s.changePct)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </React.Fragment>
+            ),
+        )}
         <button className="dn-widget-foot" onClick={() => nav('home')}>
           Voir les marchés →
         </button>
@@ -142,19 +169,24 @@ function DesktopWidgets({ nav }: { nav: Nav }) {
 
       <div className="dn-widget">
         <div className="dn-widget-title">Prochains earnings</div>
-        {upcoming.map((e) => (
-          <button
-            key={e.id}
-            className="dn-widget-row"
-            onClick={() => nav('earnings', { id: e.id, ticker: e.ticker })}
-          >
-            <StockLogo
-              stock={{ ticker: e.ticker }}
-              style={{ width: 26, height: 26, fontSize: 10, borderRadius: 8 }}
-            />
-            <span className="dn-widget-tk">{cleanTicker(e.ticker)}</span>
-            <span className="dn-widget-meta">{frDate(e.date)}</span>
-          </button>
+        {upcomingByMarket.map((g) => (
+          <React.Fragment key={g.market}>
+            <div className="dn-widget-sub">{g.market === 'US' ? '🇺🇸 US' : '🇪🇺 Europe'}</div>
+            {g.events.map((e) => (
+              <button
+                key={e.id}
+                className="dn-widget-row"
+                onClick={() => nav('earnings', { id: e.id, ticker: e.ticker })}
+              >
+                <StockLogo
+                  stock={{ ticker: e.ticker }}
+                  style={{ width: 26, height: 26, fontSize: 10, borderRadius: 8 }}
+                />
+                <span className="dn-widget-tk">{cleanTicker(e.ticker)}</span>
+                <span className="dn-widget-meta">{frDate(e.date)}</span>
+              </button>
+            ))}
+          </React.Fragment>
         ))}
         <button className="dn-widget-foot" onClick={() => nav('calendar')}>
           Voir le calendrier →

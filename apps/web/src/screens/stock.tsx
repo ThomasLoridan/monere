@@ -152,8 +152,21 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
 
   const points = candles?.points ?? [];
   const closes = points.map((p) => p.c).filter((c): c is number => c != null);
+  // Fin de fenêtre : dernier cours connu (meta Yahoo, plus frais que la dernière bougie).
+  // Base : clôture de la veille en 1D (même référence que la variation du jour),
+  // premier point de la fenêtre sinon — l'en-tête et le graphe racontent la même chose.
+  const rangeEnd = candles?.price ?? (closes.length ? closes[closes.length - 1]! : null);
+  const rangeBase =
+    range === '1D'
+      ? (candles?.previousClose ?? quote?.previousClose ?? null)
+      : closes.length > 1
+        ? closes[0]!
+        : null;
   const rangeChange =
-    closes.length > 1 ? ((closes[closes.length - 1]! - closes[0]!) / closes[0]!) * 100 : null;
+    rangeEnd != null && rangeBase != null && rangeBase !== 0
+      ? ((rangeEnd - rangeBase) / rangeBase) * 100
+      : null;
+  const rangeAbs = rangeEnd != null && rangeBase != null ? rangeEnd - rangeBase : null;
 
   const nextEarning = earnings?.available ? earnings.upcoming[0] : undefined;
   const beatStats = earnings?.available ? earnings.history?.stats : undefined;
@@ -218,11 +231,24 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
           </span>
           <span className="cur">{currency}</span>
         </div>
-        <div className={'change-pill ' + (up ? 'up' : 'down')}>
+        <div
+          className={
+            'change-pill ' + ((range === '1D' ? up : (rangeChange ?? 0) >= 0) ? 'up' : 'down')
+          }
+        >
           <span className="dot" />
           <span className="num">
-            {pct(quote?.changePct ?? null)} ·{' '}
-            {fmt(quote?.change ?? null, { sign: true, decimals: 2 })} aujourd'hui
+            {range === '1D' ? (
+              <>
+                {pct(quote?.changePct ?? null)} ·{' '}
+                {fmt(quote?.change ?? null, { sign: true, decimals: 2 })} aujourd'hui
+              </>
+            ) : (
+              <>
+                {pct(rangeChange)} · {fmt(rangeAbs, { sign: true, decimals: 2 })} sur{' '}
+                {range === 'MAX' ? 'Max' : range}
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -268,7 +294,7 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
                   >
                     {pct(rangeChange)}
                   </span>{' '}
-                  sur {range}
+                  sur {range === 'MAX' ? 'Max' : range}
                 </>
               )}
             </div>
@@ -461,6 +487,20 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
               </li>
             ))}
           </ul>
+          {digest.data.outlook && digest.data.outlook.horizons.length > 0 && (
+            <div className="ai-outlook">
+              <div className="ai-outlook-title">
+                Perspectives d'évolution (selon les sources citées)
+              </div>
+              {digest.data.outlook.horizons.map((h) => (
+                <div className="ai-outlook-row" key={h.horizon}>
+                  <span className="ai-outlook-h">{h.horizon}</span>
+                  <span>{h.scenario}</span>
+                </div>
+              ))}
+              <div className="ai-outlook-caveat">{digest.data.outlook.caveat}</div>
+            </div>
+          )}
           <div className="ai-report-disclaimer">
             {digest.data.dataQuality} · Analyse générée à partir de sources réelles citées — pas un
             conseil en investissement.

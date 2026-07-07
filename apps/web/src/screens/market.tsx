@@ -47,8 +47,12 @@ export function MarketDetailScreen({ nav, params }: ScreenProps) {
 
   const points = candles?.points ?? [];
   const closes = points.map((p) => p.c).filter((c): c is number => c != null);
+  // 1D : variation vs clôture de la veille (même référence que « aujourd'hui »)
+  const mkEnd = candles?.price ?? (closes.length ? closes[closes.length - 1]! : null);
+  const mkBase =
+    range === '1D' ? (candles?.previousClose ?? null) : closes.length > 1 ? closes[0]! : null;
   const rangeChange =
-    closes.length > 1 ? ((closes[closes.length - 1]! - closes[0]!) / closes[0]!) * 100 : null;
+    mkEnd != null && mkBase != null && mkBase !== 0 ? ((mkEnd - mkBase) / mkBase) * 100 : null;
   const totalChange = stocks.length
     ? stocks.reduce((a, s) => a + (s.changePct ?? 0), 0) / stocks.length
     : null;
@@ -148,7 +152,7 @@ export function MarketDetailScreen({ nav, params }: ScreenProps) {
                   >
                     {pct(rangeChange)}
                   </span>{' '}
-                  sur {range}
+                  sur {range === 'MAX' ? 'Max' : range}
                 </>
               )}
             </div>

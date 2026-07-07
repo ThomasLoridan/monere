@@ -9,6 +9,24 @@ await getCache();
 
 const app = await buildService({ name: 'smart', port: env.SMART_PORT });
 
+// ── Route interne (service-à-service) : derniers dépôts du Congrès ──
+app.register(async (scoped) => {
+  scoped.addHook('onRequest', async (req, reply) => {
+    await scoped.requireInternal(req, reply);
+  });
+  scoped.get('/internal/congress/latest', async () => {
+    const data = await getCongress();
+    return {
+      members: data.members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        lastFiled: m.lastFiled,
+        filingCount: m.filingCount,
+      })),
+    };
+  });
+});
+
 app.register(async (scoped) => {
   scoped.addHook('onRequest', async (req, reply) => {
     await scoped.requireAuth(req, reply);

@@ -22,9 +22,19 @@ export function CalendarScreen({ nav }: ScreenProps) {
     { id: 'past', label: 'Passés' },
     { id: 'watch', label: 'Mes favoris' },
   ] as const;
+  const [market, setMarket] = React.useState<'all' | 'us' | 'eu'>('all');
+  const markets = [
+    { id: 'all', label: 'Tous marchés' },
+    { id: 'us', label: '🇺🇸 US' },
+    { id: 'eu', label: '🇪🇺 Europe' },
+  ] as const;
 
   const events = data?.available ? data.events : [];
   const filtered = events.filter((e) => {
+    // Marché : US = symbole sans suffixe de place (.PA, .DE, .L…)
+    const isUS = !e.ticker.includes('.');
+    if (market === 'us' && !isUS) return false;
+    if (market === 'eu' && isUS) return false;
     if (filter === 'upcoming') return e.status === 'upcoming';
     if (filter === 'past') return e.status === 'past';
     if (filter === 'watch') {
@@ -75,6 +85,17 @@ export function CalendarScreen({ nav }: ScreenProps) {
             onClick={() => setFilter(f.id)}
           >
             {f.label}
+          </button>
+        ))}
+      </div>
+      <div className="filter-pills" style={{ paddingTop: 8 }}>
+        {markets.map((m) => (
+          <button
+            key={m.id}
+            className={market === m.id ? 'active' : ''}
+            onClick={() => setMarket(m.id)}
+          >
+            {m.label}
           </button>
         ))}
       </div>

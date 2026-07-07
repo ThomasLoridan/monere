@@ -13,6 +13,34 @@ const SymbolSchema = z
   .toUpperCase()
   .regex(/^[A-Z0-9.\-]{1,15}$/);
 
+// ── Routes internes (service-à-service, x-internal-key) ─────
+app.register(async (scoped) => {
+  scoped.addHook('onRequest', async (req, reply) => {
+    await scoped.requireInternal(req, reply);
+  });
+
+  /** Actualités « dernière minute » (<45 min) pour une liste de valeurs —
+   *  consommé par le job de notifications du service auth. */
+  scoped.get('/internal/breaking', async (req) => {
+    const q = validate(z.object({ symbols: z.string().min(1).max(600) }), req.query);
+    const symbols = [
+      ...new Set(
+        q.symbols
+          .split(',')
+          .map((s) => s.trim().toUpperCase())
+          .filter((s) => /^[A-Z0-9.\-]{1,15}$/.test(s)),
+      ),
+    ].slice(0, 25);
+    const results = await Promise.allSettled(symbols.map((s) => companyNews(s, 1)));
+    const items: NewsItem[] = results.flatMap((r, i) =>
+      r.status === 'fulfilled' && r.value.available
+        ? r.value.items.filter((n) => n.breaking).map((n) => ({ ...n, ticker: symbols[i]! }))
+        : [],
+    );
+    return { items };
+  });
+});
+
 app.register(async (scoped) => {
   scoped.addHook('onRequest', async (req, reply) => {
     await scoped.requireAuth(req, reply);

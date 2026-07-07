@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { cached, validate } from '@monere/shared';
 import { yahooChart, yahooQuoteSummary, type ChartRange } from './providers/yahoo.js';
-import { toYahooSymbol } from './universe.js';
+import { CORE_STOCKS, toYahooSymbol } from './universe.js';
 
 /** Service-to-service market data (x-internal-key) — used by the earnings
  *  service to compute real price impact around report dates. */
@@ -10,6 +10,12 @@ export async function registerInternalMarketRoutes(app: FastifyInstance): Promis
   app.addHook('onRequest', async (req, reply) => {
     await app.requireInternal(req, reply);
   });
+
+  /** Référentiel du cœur de l'univers — mapping ticker app → symbole de place,
+   *  utilisé par le job de notifications du service auth. */
+  app.get('/internal/universe', async () => ({
+    stocks: CORE_STOCKS.map(({ ticker, finnhub, name }) => ({ ticker, finnhub, name })),
+  }));
 
   /** Fondamentaux Yahoo (crumb géré ici) — utilisé par le service earnings
    *  pour les places non couvertes par le plan Finnhub (EU/UK). */

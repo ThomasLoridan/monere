@@ -257,6 +257,10 @@ export interface NewsDigest {
     source: string;
     sourceUrl: string;
   }>;
+  outlook: {
+    horizons: Array<{ horizon: '1j' | '3j' | '5j' | '1M' | '3M'; scenario: string }>;
+    caveat: string;
+  } | null;
   dataQuality: string;
   generatedAt: string;
   model: string;

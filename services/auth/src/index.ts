@@ -4,6 +4,7 @@ import { sendEarningsReminderEmail } from './email.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerMeRoutes } from './routes/me.js';
 import { registerAdminRoutes } from './routes/admin.js';
+import { processExternalNotifications } from './notifier.js';
 import { registerInternalRoutes } from './routes/internal.js';
 
 const env = getEnv();
@@ -91,5 +92,18 @@ const reminders = setInterval(
   15 * 60_000,
 );
 reminders.unref();
+
+// ── Notifications smart money + actualités (toutes les 10 min) ──
+processExternalNotifications().catch((err) =>
+  app.log.warn({ err }, 'external notifications initial run failed'),
+);
+const extNotifs = setInterval(
+  () =>
+    processExternalNotifications().catch((err) =>
+      app.log.warn({ err }, 'external notifications failed'),
+    ),
+  10 * 60_000,
+);
+extNotifs.unref();
 
 await startService(app, 'auth', env.AUTH_PORT);
