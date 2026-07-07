@@ -128,7 +128,7 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
   const [range, setRange] = React.useState('1D');
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [digestWanted, setDigestWanted] = React.useState(false);
-  const ranges = ['1D', '1W', '1M', '3M', '1Y', '5Y'];
+  const ranges = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y', 'MAX'];
 
   const { data: quoteData } = useQuote(ticker);
   const { data: candles, isLoading: candlesLoading } = useCandles(ticker, range);
@@ -139,7 +139,9 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
   const toggleWatch = useToggleWatch();
   const { add: addAlert } = useAlertMutations();
   const { data: aiStatus } = useAiStatus();
-  const digest = useNewsDigest(ticker, meta?.name ?? null, digestWanted);
+  // Symbole de place (ex. MC.PA) — un ticker nu comme « MC » désignerait
+  // une autre société chez Yahoo/Finnhub (Moelis & Co) et fausserait les news.
+  const digest = useNewsDigest(meta?.finnhub ?? ticker, meta?.name ?? null, digestWanted);
 
   const quote = quoteData?.quote;
   const name = meta?.name ?? quote?.name ?? ticker;
@@ -228,7 +230,7 @@ export function StockDetailScreen({ nav, params }: ScreenProps) {
       <div className="range-tabs">
         {ranges.map((r) => (
           <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>
-            {r}
+            {r === 'MAX' ? 'Max' : r}
           </button>
         ))}
       </div>

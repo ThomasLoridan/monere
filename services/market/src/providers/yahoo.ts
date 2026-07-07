@@ -8,15 +8,18 @@ import { fetchJson, upstreamUnavailable } from '@monere/shared';
 
 const UA = { 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' };
 
-export type ChartRange = '1D' | '1W' | '1M' | '3M' | '1Y' | '5Y';
+export type ChartRange = '1D' | '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y' | 'MAX';
 
 const RANGE_MAP: Record<ChartRange, { range: string; interval: string }> = {
   '1D': { range: '1d', interval: '2m' },
   '1W': { range: '5d', interval: '15m' },
   '1M': { range: '1mo', interval: '60m' },
   '3M': { range: '3mo', interval: '1d' },
+  '6M': { range: '6mo', interval: '1d' },
+  YTD: { range: 'ytd', interval: '1d' },
   '1Y': { range: '1y', interval: '1d' },
   '5Y': { range: '5y', interval: '1wk' },
+  MAX: { range: 'max', interval: '1mo' },
 };
 
 interface YahooChartResponse {

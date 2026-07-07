@@ -58,7 +58,7 @@ export function SimulatorScreen({ nav, params }: ScreenProps) {
 
   const generate = () => {
     insight.mutate({
-      ticker,
+      ticker: meta?.finnhub ?? ticker,
       name: meta?.name ?? null,
       amount,
       leverage: effectiveLeverage,

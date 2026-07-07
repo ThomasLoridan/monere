@@ -36,7 +36,7 @@ export function MarketDetailScreen({ nav, params }: ScreenProps) {
   const [range, setRange] = React.useState('1D');
   const [moreOpen, setMoreOpen] = React.useState(false);
   const [showAll, setShowAll] = React.useState(false);
-  const ranges = ['1D', '1W', '1M', '3M', '1Y', '5Y'];
+  const ranges = ['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y', 'MAX'];
 
   const { data: indicesData } = useIndices();
   const idx = (indicesData?.indices ?? []).find((i) => i.id === id);
@@ -112,7 +112,7 @@ export function MarketDetailScreen({ nav, params }: ScreenProps) {
       <div className="range-tabs">
         {ranges.map((r) => (
           <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>
-            {r}
+            {r === 'MAX' ? 'Max' : r}
           </button>
         ))}
       </div>

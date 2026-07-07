@@ -19,7 +19,7 @@ const SymbolSchema = z
   .trim()
   .toUpperCase()
   .regex(/^[A-Z0-9.\-^]{1,15}$/, 'Symbole invalide');
-const RangeSchema = z.enum(['1D', '1W', '1M', '3M', '1Y', '5Y']);
+const RangeSchema = z.enum(['1D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y', 'MAX']);
 
 export async function registerMarketRoutes(app: FastifyInstance): Promise<void> {
   // All market data requires a session (the gateway also enforces this).
