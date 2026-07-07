@@ -3989,3 +3989,105 @@ input[type='range'].slider::-moz-range-thumb {
   border-radius: 24px;
   padding: 12px;
 }
+
+/* ── Earnings : compte à rebours + carte d'analyse battre/manquer ── */
+.countdown-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 14px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.verdict-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+}
+.verdict-card[data-tendency='beat'] {
+  border-color: color-mix(in srgb, var(--pos) 35%, var(--line));
+}
+.verdict-card[data-tendency='miss'] {
+  border-color: color-mix(in srgb, var(--neg) 35%, var(--line));
+}
+.verdict-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.verdict-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-3);
+  margin-bottom: 4px;
+}
+.verdict-value {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.verdict-pct {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  flex-shrink: 0;
+}
+.verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 14px;
+}
+.verdict-grid .lbl {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin-bottom: 3px;
+}
+.verdict-grid .v {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.verdict-note {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 11px;
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+@media (max-width: 380px) {
+  .verdict-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ── Actualités : en-têtes de groupe (marché sélectionné / global) ── */
+.news-group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 20px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-3);
+}
+.news-group-head .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}

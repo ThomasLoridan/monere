@@ -24,7 +24,8 @@
     "db:generate": "npm run db:generate -w services/auth",
     "db:migrate": "npm run db:migrate -w services/auth",
     "db:seed": "npm run db:seed -w services/auth",
-    "backup": "bash infra/backup/backup.sh"
+    "backup": "bash infra/backup/backup.sh",
+    "share": "node scripts/share.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

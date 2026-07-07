@@ -136,6 +136,24 @@ exigent `x-internal-key` et ne sont jamais proxifiées par le gateway.
 | `npm run db:seed` | (Re)crée l'admin si absent |
 | `npm run cap:add:ios -w apps/web` | Génère le projet iOS natif (Capacitor) |
 
+## Lien public stable (démo)
+
+```bash
+npm run dev     # la stack
+npm run share   # tunnel Cloudflare + publication de l'URL
+```
+
+`npm run share` ouvre un tunnel vers le frontend et publie l'URL courante dans
+[docs/app-url.json](docs/app-url.json). La page GitHub Pages
+**https://thomasloridan.github.io/monere/** lit ce fichier et redirige : le lien
+partagé ne change jamais, même quand le tunnel redémarre. Configuration (une fois) :
+
+1. GitHub → Settings → Pages → « Deploy from a branch » → `main` / `/docs` ;
+2. un token fine-grained (permission *Contents: Read and write* sur ce repo)
+   dans `.env` : `GITHUB_TOKEN=github_pat_…`
+
+> Le lien n'est actif que quand la stack tourne (la page l'indique sinon).
+
 ## CI/CD & images Docker
 
 - **À chaque push** : lint, typecheck, tests, audit npm, build web, build des

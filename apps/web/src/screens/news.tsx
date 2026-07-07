@@ -10,10 +10,16 @@ export function NewsScreen({ nav, back }: ScreenProps) {
   const { data: watchData } = useWatchlist();
   const { data: universe } = useUniverse();
   const metaByTicker = new Map((universe?.stocks ?? []).map((s) => [s.ticker, s]));
+
+  // Marché sélectionné sur l'accueil : ses valeurs passent en tête du fil
+  const marketId = localStorage.getItem('monere:market') ?? 'sp500';
+  const marketName = (universe?.indices ?? []).find((i) => i.id === marketId)?.name ?? marketId;
+  const marketStocks = (universe?.stocks ?? []).filter((s) => s.indices.includes(marketId));
   const watchSymbols = (watchData?.tickers ?? []).map((t) => metaByTicker.get(t)?.finnhub ?? t);
-  const symbols = watchSymbols.length
-    ? watchSymbols
-    : (universe?.stocks ?? []).slice(0, 8).map((s) => s.finnhub);
+  const symbols = [...new Set([...marketStocks.map((s) => s.finnhub), ...watchSymbols])].slice(
+    0,
+    12,
+  );
   const { data, isLoading } = useNewsFeed(symbols);
 
   const [filter, setFilter] = React.useState<'all' | 'company' | 'market'>('all');
@@ -37,6 +43,20 @@ export function NewsScreen({ nav, back }: ScreenProps) {
     );
   });
 
+  // Valeurs du marché sélectionné d'abord (dernière minute puis récence),
+  // puis le fil global — chaque groupe avec son en-tête.
+  const companyNews = filtered
+    .filter((n) => n.kind === 'company')
+    .sort((a, b) => Number(b.breaking) - Number(a.breaking) || b.publishedAt - a.publishedAt);
+  const globalNews = filtered.filter((n) => n.kind !== 'company');
+  const grouped: Array<{ label: string | null; items: typeof filtered }> =
+    filter === 'all'
+      ? [
+          { label: `Valeurs · ${marketName}`, items: companyNews },
+          { label: 'Actualités globales', items: globalNews },
+        ]
+      : [{ label: null, items: filter === 'company' ? companyNews : globalNews }];
+
   return (
     <div className="screen">
       <AppBar
@@ -55,7 +75,8 @@ export function NewsScreen({ nav, back }: ScreenProps) {
           des marchés.
         </h1>
         <p className="sub">
-          Entreprises que tu suis, indices et macro — sources officielles, liens directs.
+          Les valeurs du marché sélectionné ({marketName}) d'abord, puis l'actualité globale —
+          sources officielles, liens directs.
         </p>
       </div>
 
@@ -96,9 +117,22 @@ export function NewsScreen({ nav, back }: ScreenProps) {
         <div className="watchlist-empty">Aucune actualité ne correspond.</div>
       ) : (
         <div style={{ margin: '4px 0 12px' }}>
-          {filtered.map((n) => (
-            <NewsFeedRow key={n.id + n.url} n={n} nav={nav} />
-          ))}
+          {grouped.map(
+            (g) =>
+              g.items.length > 0 && (
+                <React.Fragment key={g.label ?? 'flat'}>
+                  {g.label && (
+                    <div className="news-group-head">
+                      <span className="dot" />
+                      {g.label}
+                    </div>
+                  )}
+                  {g.items.map((n) => (
+                    <NewsFeedRow key={n.id + n.url} n={n} nav={nav} />
+                  ))}
+                </React.Fragment>
+              ),
+          )}
         </div>
       )}
     </div>

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Monere — accès à l'application</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, 'Segoe UI', sans-serif;
+        background: #0e0e14;
+        color: #f5f5fa;
+      }
+      .card {
+        text-align: center;
+        padding: 40px 28px;
+        max-width: 420px;
+      }
+      .logo {
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        color: #8b8dfc;
+      }
+      p {
+        color: #a9a9b8;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      a {
+        color: #8b8dfc;
+      }
+      .spin {
+        margin: 22px auto 0;
+        width: 26px;
+        height: 26px;
+        border: 3px solid #2c2c3a;
+        border-top-color: #8b8dfc;
+        border-radius: 50%;
+        animation: r 0.8s linear infinite;
+      }
+      @keyframes r {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="logo">Monere</div>
+      <p id="msg">Redirection vers l'application…</p>
+      <div class="spin" id="spin"></div>
+    </div>
+    <script>
+      // L'URL du tunnel courant est publiée par `npm run share` dans app-url.json.
+      fetch('./app-url.json?ts=' + Date.now())
+        .then((r) => {
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        })
+        .then((d) => {
+          if (!d.url) throw new Error('URL absente');
+          document.getElementById('msg').innerHTML =
+            'Redirection vers <a href="' + d.url + '">' + d.url + '</a>…';
+          location.replace(d.url);
+        })
+        .catch(() => {
+          document.getElementById('spin').remove();
+          document.getElementById('msg').textContent =
+            "L'application n'est pas en ligne pour le moment (le serveur de démo est éteint). Réessayez plus tard.";
+        });
+    </script>
+  </body>
+</html>

@@ -32,7 +32,11 @@ const REGIONS = [
 
 export function HomeScreen({ nav }: ScreenProps) {
   const { user } = useAuth();
-  const [activeIdx, setActiveIdx] = React.useState('sp500');
+  const [activeIdx, setActiveIdx] = React.useState(
+    () => localStorage.getItem('monere:market') ?? 'sp500',
+  );
+  // Le fil d'actualités priorise les valeurs du marché sélectionné
+  React.useEffect(() => localStorage.setItem('monere:market', activeIdx), [activeIdx]);
   const { data: indicesData, isLoading: indicesLoading } = useIndices();
   const { stocks, loading: stocksLoading } = useDisplayStocks(activeIdx);
   const { data: alertsData } = useAlerts();
@@ -157,7 +161,7 @@ export function HomeScreen({ nav }: ScreenProps) {
       )}
 
       <NextEarningsTeaser nav={nav} />
-      <NewsTeaser nav={nav} />
+      <NewsTeaser nav={nav} marketId={activeIdx} />
     </div>
   );
 }
@@ -256,11 +260,21 @@ export function NextEarningsTeaser({ nav }: { nav: ScreenProps['nav'] }) {
 }
 
 // ── Teaser: top headlines (real feed) ───────────────────────
-export function NewsTeaser({ nav }: { nav: ScreenProps['nav'] }) {
+export function NewsTeaser({ nav, marketId }: { nav: ScreenProps['nav']; marketId?: string }) {
   const { data: universe } = useUniverse();
-  const symbols = (universe?.stocks ?? []).slice(0, 8).map((s) => s.finnhub);
+  const marketStocks = marketId
+    ? (universe?.stocks ?? []).filter((s) => s.indices.includes(marketId))
+    : [];
+  const symbols = (marketStocks.length ? marketStocks : (universe?.stocks ?? []).slice(0, 8)).map(
+    (s) => s.finnhub,
+  );
   const { data } = useNewsFeed(symbols);
-  const top = (data?.available ? data.items : []).slice(0, 3);
+  const items = data?.available ? data.items : [];
+  // Valeurs du marché sélectionné d'abord, puis les titres globaux
+  const top = [
+    ...items.filter((n) => n.kind === 'company'),
+    ...items.filter((n) => n.kind !== 'company'),
+  ].slice(0, 3);
 
   return (
     <>

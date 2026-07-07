@@ -140,19 +140,19 @@ async function yahooSummary(symbol: string, modules: string[]): Promise<QuoteSum
   }
 }
 
-// ── Événements à venir, par symbole ──────────────────────────
-export async function upcomingFor(symbol: string): Promise<CalendarEvent[]> {
-  return cached(`earnings:up:${symbol}`, 1800, async () => {
+// ── Événements par symbole : passés (~4 trimestres) + à venir ─
+export async function eventsFor(symbol: string): Promise<CalendarEvent[]> {
+  return cached(`earnings:ev:${symbol}`, 1800, async () => {
     // 1. Finnhub par symbole (couvre les valeurs US du plan gratuit)
     if (key()) {
       try {
-        const from = new Date().toISOString().slice(0, 10);
+        const from = new Date(Date.now() - 400 * 86_400_000).toISOString().slice(0, 10);
         const to = new Date(Date.now() + 240 * 86_400_000).toISOString().slice(0, 10);
         const d = await fetchJson<{ earningsCalendar?: FhCalendarRow[] }>(
           `${BASE}/calendar/earnings?symbol=${encodeURIComponent(symbol)}&from=${from}&to=${to}&token=${key()}`,
           { timeoutMs: 15_000 },
         );
-        const rows = (d.earningsCalendar ?? []).map(shapeFh).filter((e) => e.status === 'upcoming');
+        const rows = (d.earningsCalendar ?? []).map(shapeFh);
         if (rows.length > 0) return rows.sort((a, b) => a.date.localeCompare(b.date));
       } catch {
         /* 403 sur les places non couvertes → repli Yahoo */
@@ -187,6 +187,11 @@ export async function upcomingFor(symbol: string): Promise<CalendarEvent[]> {
   });
 }
 
+/** Prochains événements uniquement (fiche société). */
+export async function upcomingFor(symbol: string): Promise<CalendarEvent[]> {
+  return (await eventsFor(symbol)).filter((e) => e.status === 'upcoming');
+}
+
 /** Calendrier multi-symboles (écran Calendrier) — requêtes par valeur, en parallèle borné. */
 export async function calendar(
   fromISO: string,
@@ -211,7 +216,9 @@ export async function calendar(
   const CONCURRENCY = 4;
   for (let i = 0; i < unique.length; i += CONCURRENCY) {
     const batch = await Promise.allSettled(
-      unique.slice(i, i + CONCURRENCY).map((s) => upcomingFor(s)),
+      unique
+        .slice(i, i + CONCURRENCY)
+        .map(async (s) => (await Promise.all([eventsFor(s), pastFor(s)])).flat()),
     );
     for (const r of batch) if (r.status === 'fulfilled') events.push(...r.value);
   }
@@ -381,6 +388,42 @@ export function matchReportDates(rows: SurpriseRow[], dates: string[]): Map<stri
     }
   }
   return out;
+}
+
+/** Événements PASSÉS reconstruits depuis les sources réelles : le plan Finnhub
+ *  gratuit ne renvoie aucun événement passé, donc on croise l'historique des
+ *  surprises (Finnhub/Yahoo) avec les dates de publication officielles des
+ *  dépôts 8-K (SEC EDGAR) — valeurs US uniquement (l'EDGAR ne couvre pas l'EU). */
+export async function pastFor(symbol: string): Promise<CalendarEvent[]> {
+  return cached(`earnings:past:${symbol}`, 3 * 3600, async () => {
+    const [hist, dates] = await Promise.all([surpriseHistory(symbol), usReportDates(symbol)]);
+    if (!hist.available || dates.length === 0) return [];
+    const dated = matchReportDates(hist.rows, dates);
+    return hist.rows
+      .filter((r) => dated.has(r.period))
+      .slice(-6)
+      .map((r) => ({
+        id: `${symbol.toLowerCase()}-${r.quarter.replace(/\s/g, '').toLowerCase()}`,
+        ticker: symbol,
+        date: dated.get(r.period)!,
+        when: 'TBD' as const,
+        quarter: r.quarter,
+        status: 'past' as const,
+        consensus: { eps: r.epsEstimate, revenue: null },
+        actual: r.epsActual == null ? null : { eps: r.epsActual, revenue: null },
+        surprise: {
+          eps:
+            r.surprisePct != null
+              ? `${r.surprisePct >= 0 ? '+' : ''}${r.surprisePct.toFixed(1)}%`
+              : null,
+          revenue: null,
+        },
+        source: {
+          name: 'SEC EDGAR — 8-K Results of Operations (officiel)',
+          url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${encodeURIComponent(symbol)}&type=8-K&dateb=&owner=include&count=10`,
+        },
+      }));
+  });
 }
 
 // ── Impact ±1 jour de bourse sur cours réels ─────────────────

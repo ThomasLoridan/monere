@@ -83,10 +83,18 @@ export function EarningsDetailScreen({
 
   const isUpcoming = earning.status === 'upcoming';
   const d = new Date(earning.date);
+  const daysTo = Math.max(0, Math.ceil((d.getTime() - Date.now()) / 86_400_000));
   const activeAlert = (alertsData?.alerts ?? []).find(
     (a) => a.ticker === ticker && a.eventDate.slice(0, 10) === earning.date,
   );
   const stats = data.history?.stats;
+  // Impact moyen réel des publications passées (J-1 → J+1, cours de clôture)
+  const pastImpacts = data.past
+    .map((e) => e.priceImpact?.d2Pct)
+    .filter((v): v is number => v != null);
+  const avgImpact = pastImpacts.length
+    ? pastImpacts.reduce((a, b) => a + b, 0) / pastImpacts.length
+    : null;
   const cur = (meta?.currency ?? 'USD') === 'USD' ? '$' : '€';
   const epsSurprise = earning.surprise?.eps ? parseFloat(earning.surprise.eps) : null;
   const outcomeBeat = epsSurprise != null && epsSurprise >= 0;
@@ -157,42 +165,12 @@ export function EarningsDetailScreen({
                 ? `${earning.consensus.revenue.toFixed(2)} Md ${cur}`
                 : 'non communiqué'}
             </div>
-            {stats && stats.beatRatePct != null && (
-              <div className="confidence">
-                <div className="row">
-                  <span className="l">Tendance historique (stat. réelle)</span>
-                  <span
-                    className="r"
-                    style={{
-                      color:
-                        stats.tendency === 'beat'
-                          ? 'var(--pos)'
-                          : stats.tendency === 'miss'
-                            ? 'var(--neg)'
-                            : 'var(--ink-2)',
-                    }}
-                  >
-                    {stats.tendency === 'beat'
-                      ? 'Bat souvent'
-                      : stats.tendency === 'miss'
-                        ? 'Manque souvent'
-                        : 'En ligne'}
-                    {stats.avgSurprisePct != null
-                      ? ` · surprise moy. ${pct(stats.avgSurprisePct, { decimals: 1 })}`
-                      : ''}
-                  </span>
-                </div>
-                <div className="conf-bar">
-                  <div className="conf-fill" style={{ width: stats.beatRatePct + '%' }} />
-                </div>
-                <div className="row" style={{ marginTop: 6 }}>
-                  <span className="l">
-                    {stats.beats} beats / {stats.quarters} derniers trimestres
-                  </span>
-                  <span className="r">{stats.beatRatePct}%</span>
-                </div>
-              </div>
-            )}
+            <div className="countdown-chip">
+              <Icon name="clock" size={14} color="var(--accent)" />
+              {daysTo === 0
+                ? "Publication aujourd'hui"
+                : `Publication dans ${daysTo} jour${daysTo > 1 ? 's' : ''}`}
+            </div>
           </>
         ) : (
           <>
@@ -249,6 +227,75 @@ export function EarningsDetailScreen({
         )}
         <SourceLine source={earning.source} />
       </div>
+
+      {/* Analyse : battre ou manquer ? — statistique réelle, mise en avant */}
+      {isUpcoming && stats && stats.beatRatePct != null && (
+        <>
+          <div className="section-head">
+            <div className="title">Analyse · battre ou manquer ?</div>
+          </div>
+          <div className="verdict-card" data-tendency={stats.tendency} style={{ margin: '0 20px' }}>
+            <div className="verdict-head">
+              <div>
+                <div className="verdict-label">Tendance historique</div>
+                <div
+                  className="verdict-value"
+                  style={{
+                    color:
+                      stats.tendency === 'beat'
+                        ? 'var(--pos)'
+                        : stats.tendency === 'miss'
+                          ? 'var(--neg)'
+                          : 'var(--ink)',
+                  }}
+                >
+                  {stats.tendency === 'beat'
+                    ? 'Devrait BATTRE le consensus'
+                    : stats.tendency === 'miss'
+                      ? 'Risque de MANQUER le consensus'
+                      : 'Généralement EN LIGNE avec le consensus'}
+                </div>
+              </div>
+              <div className="verdict-pct">{stats.beatRatePct}%</div>
+            </div>
+            <div className="conf-bar" style={{ marginTop: 10 }}>
+              <div className="conf-fill" style={{ width: stats.beatRatePct + '%' }} />
+            </div>
+            <div className="verdict-grid">
+              <div>
+                <div className="lbl">Consensus battu</div>
+                <div className="v">
+                  {stats.beats} / {stats.quarters} trimestres
+                </div>
+              </div>
+              <div>
+                <div className="lbl">Surprise EPS moyenne</div>
+                <div
+                  className="v"
+                  style={{
+                    color: (stats.avgSurprisePct ?? 0) >= 0 ? 'var(--pos)' : 'var(--neg)',
+                  }}
+                >
+                  {stats.avgSurprisePct != null ? pct(stats.avgSurprisePct, { decimals: 1 }) : '—'}
+                </div>
+              </div>
+              <div>
+                <div className="lbl">Impact moyen sur le cours</div>
+                <div
+                  className="v"
+                  style={{ color: (avgImpact ?? 0) >= 0 ? 'var(--pos)' : 'var(--neg)' }}
+                >
+                  {avgImpact != null ? pct(avgImpact, { decimals: 1 }) : '—'}
+                </div>
+              </div>
+            </div>
+            <div className="verdict-note">
+              Statistique calculée sur les {stats.quarters} derniers trimestres réellement publiés —
+              ce n'est pas une prédiction.
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Suivre le call — lien IR officiel */}
       {data.ir && (

@@ -2,11 +2,10 @@ import { buildService, startService, getEnv, getCache, validate } from '@monere/
 import { z } from 'zod';
 import {
   calendar,
+  pastFor,
   priceImpact,
   surpriseHistory,
   upcomingFor,
-  usReportDates,
-  matchReportDates,
   type CalendarEvent,
 } from './provider.js';
 import { irLink } from './ir-links.js';
@@ -38,8 +37,9 @@ app.register(async (scoped) => {
       }),
       req.query,
     );
-    const from = q.from ?? new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
-    const to = q.to ?? new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+    // -120 j pour couvrir la saison de résultats précédente (onglet « Passés »)
+    const from = q.from ?? new Date(Date.now() - 120 * 86_400_000).toISOString().slice(0, 10);
+    const to = q.to ?? new Date(Date.now() + 240 * 86_400_000).toISOString().slice(0, 10);
     const symbols = q.symbols
       ?.split(',')
       .map((s) => s.trim().toUpperCase())
@@ -55,40 +55,16 @@ app.register(async (scoped) => {
   scoped.get('/earnings/company/:symbol', async (req) => {
     const params = validate(z.object({ symbol: SymbolSchema }), req.params);
 
-    const [upcoming, hist, reportDates] = await Promise.all([
+    const [upcoming, hist, pastEvents] = await Promise.all([
       upcomingFor(params.symbol),
       surpriseHistory(params.symbol),
-      usReportDates(params.symbol), // vide pour les valeurs non-US (pas d'EDGAR)
+      pastFor(params.symbol), // vide pour les valeurs non-US (pas d'EDGAR)
     ]);
 
-    // Événements passés : trimestres publiés (historique réel), datés par le
-    // dépôt 8-K officiel correspondant quand il existe (US). Sans date réelle,
-    // le trimestre reste visible dans l'historique mais sans impact calculé.
-    let past: Array<CalendarEvent & { priceImpact?: unknown }> = [];
-    if (hist.available && reportDates.length > 0) {
-      const dated = matchReportDates(hist.rows, reportDates);
-      const rows = hist.rows.filter((r) => dated.has(r.period)).slice(-6);
-      past = rows.map((r) => ({
-        id: `${params.symbol.toLowerCase()}-${r.quarter.replace(/\s/g, '').toLowerCase()}`,
-        ticker: params.symbol,
-        date: dated.get(r.period)!,
-        when: 'TBD' as const,
-        quarter: r.quarter,
-        status: 'past' as const,
-        consensus: { eps: r.epsEstimate, revenue: null },
-        actual: r.epsActual == null ? null : { eps: r.epsActual, revenue: null },
-        surprise: {
-          eps:
-            r.surprisePct != null
-              ? `${r.surprisePct >= 0 ? '+' : ''}${r.surprisePct.toFixed(1)}%`
-              : null,
-          revenue: null,
-        },
-        source: {
-          name: 'SEC EDGAR — 8-K Results of Operations (officiel)',
-          url: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&company=${encodeURIComponent(params.symbol)}&type=8-K&dateb=&owner=include&count=10`,
-        },
-      }));
+    // Événements passés : trimestres publiés datés par le dépôt 8-K officiel,
+    // enrichis de l'impact réel sur le cours (clôtures J-1 → J+1).
+    let past: Array<CalendarEvent & { priceImpact?: unknown }> = pastEvents;
+    if (past.length > 0) {
       const impacts = await Promise.all(past.map((e) => priceImpact(params.symbol, e.date)));
       past = past.map((e, i) => ({ ...e, priceImpact: impacts[i] }));
     }

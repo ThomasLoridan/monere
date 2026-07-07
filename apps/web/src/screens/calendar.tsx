@@ -139,6 +139,7 @@ export function EarningsCalendarRow({
 }) {
   const isUpcoming = e.status === 'upcoming';
   const epsSurprise = e.surprise?.eps ? parseFloat(e.surprise.eps) : null;
+  const daysTo = Math.max(0, Math.ceil((new Date(e.date).getTime() - Date.now()) / 86_400_000));
   return (
     <button className="earning-row" onClick={() => nav('earnings', { id: e.id, ticker: e.ticker })}>
       <StockLogo stock={{ ticker: e.ticker, domain }} />
@@ -161,7 +162,7 @@ export function EarningsCalendarRow({
       <div className="pred">
         {isUpcoming ? (
           <>
-            <div>Consensus EPS</div>
+            <div>{daysTo === 0 ? "Aujourd'hui" : `Dans ${daysTo} j`} · Consensus EPS</div>
             <div className="conf beat">
               {e.consensus.eps != null ? e.consensus.eps.toFixed(2) : '—'}
             </div>
