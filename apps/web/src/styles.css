@@ -3973,3 +3973,19 @@ input[type='range'].slider::-moz-range-thumb {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Desktop & tablette : les feuilles (alertes, infos ratios, menus)
+   deviennent des fenêtres centrées au lieu d'un bandeau en bas d'écran */
+[data-device='native'] .sheet,
+[data-device='tablet'] .sheet {
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(500px, 92vw);
+  max-height: 82vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  padding: 12px;
+}

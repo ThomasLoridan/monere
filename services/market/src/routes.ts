@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { cached, validate } from '@monere/shared';
 import { getQuote, getQuotes } from './quotes.js';
 import { getConstituents } from './constituents.js';
-import { yahooChart, yahooQuote, yahooSearch, type ChartRange } from './providers/yahoo.js';
+import {
+  yahooChart,
+  yahooQuote,
+  yahooSearch,
+  yahooRatios,
+  type ChartRange,
+} from './providers/yahoo.js';
 import { fhMetrics, fhProfile, fhSearch, fhSymbols, hasFinnhubKey } from './providers/finnhub.js';
 import { CORE_STOCKS, INDEX_DEFS, resolveStock, toYahooSymbol } from './universe.js';
 import { addClient } from './stream.js';
@@ -160,26 +166,38 @@ export async function registerMarketRoutes(app: FastifyInstance): Promise<void> 
   app.get('/market/profile/:symbol', async (req) => {
     const params = validate(z.object({ symbol: SymbolSchema }), req.params);
     const meta = resolveStock(params.symbol);
-    if (!hasFinnhubKey()) {
-      return {
-        ticker: meta?.ticker ?? params.symbol,
-        meta: meta ?? null,
-        ratios: null,
-        message: 'Ratios indisponibles sans clé Finnhub — ajoutez FINNHUB_API_KEY dans .env',
-      };
-    }
     const fhSym = meta?.finnhub ?? params.symbol;
-    const [profile, ratios, quote] = await Promise.all([
-      cached(`profile:${fhSym}`, 24 * 3600, () => fhProfile(fhSym)),
-      cached(`metrics:${fhSym}`, 3600, () => fhMetrics(fhSym)),
+    const ySym = toYahooSymbol(params.symbol);
+
+    // Finnhub d'abord (US, temps quasi réel) ; si la place n'est pas couverte
+    // par le plan (403 sur EU/UK) ou métriques vides → Yahoo quoteSummary (réel).
+    const ratios = await cached(`ratios:${fhSym}`, 3600, async () => {
+      if (hasFinnhubKey()) {
+        try {
+          const m = await fhMetrics(fhSym);
+          const hasData = [m.pe, m.eps, m.beta, m.marketCap].some((v) => v != null);
+          if (hasData) return m;
+        } catch {
+          /* place non couverte par le plan → repli Yahoo */
+        }
+      }
+      return yahooRatios(ySym);
+    }).catch(() => null);
+
+    const [profile, quote] = await Promise.all([
+      hasFinnhubKey()
+        ? cached(`profile:${fhSym}`, 24 * 3600, () => fhProfile(fhSym)).catch(() => null)
+        : Promise.resolve(null),
       getQuote(params.symbol).catch(() => null),
     ]);
+
     return {
       ticker: meta?.ticker ?? params.symbol,
       meta: meta ?? null,
       profile,
       ratios,
       quote,
+      ...(ratios ? {} : { message: 'Ratios momentanément indisponibles auprès des sources.' }),
     };
   });
 

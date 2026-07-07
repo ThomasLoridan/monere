@@ -154,3 +154,105 @@ export async function yahooSearch(query: string) {
       type: q.typeDisp ?? q.quoteType ?? '',
     }));
 }
+
+// ── quoteSummary (crumb + cookie) — fondamentaux réels US + EU ──
+// Yahoo exige depuis 2023 un cookie de session et un "crumb" anti-CSRF.
+// On les obtient une fois et on les met en cache mémoire (re-tentative sur 401/403).
+let crumbState: { cookie: string; crumb: string } | null = null;
+
+async function getCrumb(): Promise<{ cookie: string; crumb: string }> {
+  if (crumbState) return crumbState;
+  const res = await fetch('https://fc.yahoo.com', {
+    headers: UA,
+    redirect: 'manual',
+    signal: AbortSignal.timeout(10_000),
+  });
+  const cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? '';
+  if (!cookie) throw upstreamUnavailable('Yahoo: cookie de session indisponible');
+  const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+    headers: { ...UA, cookie },
+    signal: AbortSignal.timeout(10_000),
+  });
+  const crumb = (await crumbRes.text()).trim();
+  if (!crumbRes.ok || !crumb || crumb.includes('<')) {
+    throw upstreamUnavailable('Yahoo: crumb indisponible');
+  }
+  crumbState = { cookie, crumb };
+  return crumbState;
+}
+
+interface RawVal {
+  raw?: number;
+}
+type Mod = Record<string, RawVal | number | string | undefined | null | unknown>;
+
+export interface QuoteSummaryResult {
+  summaryDetail?: Mod;
+  defaultKeyStatistics?: Mod;
+  calendarEvents?: { earnings?: { earningsDate?: RawVal[]; earningsAverage?: RawVal } };
+  earningsHistory?: {
+    history?: Array<{
+      epsActual?: RawVal;
+      epsEstimate?: RawVal;
+      surprisePercent?: RawVal;
+      quarter?: { raw?: number; fmt?: string };
+    }>;
+  };
+}
+
+export async function yahooQuoteSummary(
+  symbol: string,
+  modules: string[],
+): Promise<QuoteSummaryResult> {
+  const attempt = async () => {
+    const { cookie, crumb } = await getCrumb();
+    const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=${modules.join(',')}&crumb=${encodeURIComponent(crumb)}`;
+    const res = await fetch(url, {
+      headers: { ...UA, cookie },
+      signal: AbortSignal.timeout(12_000),
+    });
+    if (res.status === 401 || res.status === 403) {
+      crumbState = null; // crumb périmé — on le régénèrera
+      throw upstreamUnavailable(`Yahoo quoteSummary ${res.status} pour ${symbol}`);
+    }
+    if (!res.ok) throw upstreamUnavailable(`Yahoo quoteSummary ${res.status} pour ${symbol}`);
+    const data = (await res.json()) as { quoteSummary?: { result?: QuoteSummaryResult[] } };
+    const result = data.quoteSummary?.result?.[0];
+    if (!result) throw upstreamUnavailable(`Yahoo: aucun fondamental pour ${symbol}`);
+    return result;
+  };
+  try {
+    return await attempt();
+  } catch {
+    return attempt(); // seconde chance avec crumb régénéré
+  }
+}
+
+const raw = (m: Mod | undefined, key: string): number | null => {
+  const v = m?.[key] as RawVal | undefined;
+  return typeof v?.raw === 'number' ? v.raw : null;
+};
+
+/** Ratios réels via Yahoo — utilisé quand Finnhub ne couvre pas la place (EU/UK). */
+export async function yahooRatios(symbol: string) {
+  const r = await yahooQuoteSummary(symbol, ['summaryDetail', 'defaultKeyStatistics']);
+  const sd = r.summaryDetail;
+  const ks = r.defaultKeyStatistics;
+  const divYield = raw(sd, 'dividendYield');
+  const mcap = raw(sd, 'marketCap');
+  return {
+    pe: raw(sd, 'trailingPE'),
+    eps: raw(ks, 'trailingEps'),
+    beta: raw(sd, 'beta') ?? raw(ks, 'beta'),
+    divYield: divYield != null ? divYield * 100 : null,
+    high52: raw(sd, 'fiftyTwoWeekHigh'),
+    low52: raw(sd, 'fiftyTwoWeekLow'),
+    peg: raw(ks, 'pegRatio'),
+    avgVolume10d: raw(sd, 'averageVolume10days'),
+    marketCap: mcap != null ? mcap / 1e6 : null, // même unité que Finnhub (millions)
+    source: {
+      name: 'Yahoo Finance',
+      url: `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/key-statistics`,
+    },
+  };
+}

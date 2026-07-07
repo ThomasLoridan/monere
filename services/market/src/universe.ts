@@ -85,7 +85,8 @@ export interface StockMeta {
   finnhub: string; // Finnhub symbol (US = plain; EU = exchange-suffixed)
   name: string;
   exchange: string;
-  currency: 'USD' | 'EUR' | 'GBP';
+  /** GBp = pence sterling (unité réelle de cotation du LSE). */
+  currency: 'USD' | 'EUR' | 'GBP' | 'GBp';
   domain: string;
   sector: string;
   indices: string[];
@@ -237,6 +238,73 @@ export const CORE_STOCKS: StockMeta[] = [
     sector: 'Healthcare · Pharma',
     indices: ['stoxx'],
     realtime: true,
+  },
+
+  // ===== UK (FTSE 100) — cotées en pence (GBp) sur le LSE =====
+  {
+    ticker: 'AZN',
+    symbol: 'AZN.L',
+    yahoo: 'AZN.L',
+    finnhub: 'AZN.L',
+    name: 'AstraZeneca',
+    exchange: 'LSE',
+    currency: 'GBp',
+    domain: 'astrazeneca.com',
+    sector: 'Healthcare · Pharma',
+    indices: ['ftse'],
+    realtime: false,
+  },
+  {
+    ticker: 'SHEL',
+    symbol: 'SHEL.L',
+    yahoo: 'SHEL.L',
+    finnhub: 'SHEL.L',
+    name: 'Shell plc',
+    exchange: 'LSE',
+    currency: 'GBp',
+    domain: 'shell.com',
+    sector: 'Energy · Oil & Gas',
+    indices: ['ftse'],
+    realtime: false,
+  },
+  {
+    ticker: 'HSBA',
+    symbol: 'HSBA.L',
+    yahoo: 'HSBA.L',
+    finnhub: 'HSBA.L',
+    name: 'HSBC Holdings',
+    exchange: 'LSE',
+    currency: 'GBp',
+    domain: 'hsbc.com',
+    sector: 'Financials · Banking',
+    indices: ['ftse'],
+    realtime: false,
+  },
+  {
+    ticker: 'ULVR',
+    symbol: 'ULVR.L',
+    yahoo: 'ULVR.L',
+    finnhub: 'ULVR.L',
+    name: 'Unilever',
+    exchange: 'LSE',
+    currency: 'GBp',
+    domain: 'unilever.com',
+    sector: 'Consumer · Staples',
+    indices: ['ftse'],
+    realtime: false,
+  },
+  {
+    ticker: 'BP',
+    symbol: 'BP.L',
+    yahoo: 'BP.L',
+    finnhub: 'BP.L',
+    name: 'BP plc',
+    exchange: 'LSE',
+    currency: 'GBp',
+    domain: 'bp.com',
+    sector: 'Energy · Oil & Gas',
+    indices: ['ftse'],
+    realtime: false,
   },
 ];
 
