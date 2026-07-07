@@ -26,8 +26,9 @@ RUN npm ci --include-workspace-root -w packages/shared -w services/${SERVICE}
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY services/${SERVICE} services/${SERVICE}
-RUN npm run build -w packages/shared && npm run build -w services/${SERVICE} \
- && if [ -d services/${SERVICE}/prisma ]; then npm run db:generate -w services/${SERVICE}; fi
+# prisma generate must run BEFORE tsc — the @prisma/client types are generated
+RUN if [ -d services/${SERVICE}/prisma ]; then npm run db:generate -w services/${SERVICE}; fi \
+ && npm run build -w packages/shared && npm run build -w services/${SERVICE}
 
 FROM node:22-alpine AS runtime
 ARG SERVICE
