@@ -22,7 +22,7 @@ IA et suivi « smart money » (Congrès US, 13F, insiders).
 - **Marchés** — S&P 500, Nasdaq 100, CAC 40, DAX, Euro Stoxx 50, FTSE 100 :
   cotations réelles, composition complète des indices, listing intégral des places.
 - **Actions** — graphique 1J progressif (vide à l'ouverture, se remplit en séance),
-  historiques 1S → 5A, ratios financiers, actualités liées aux articles originaux.
+  historiques 1J → Max (1J, 1S, 1M, 3M, 6M, YTD, 1A, 5A, Max), ratios financiers, actualités liées aux articles originaux.
 - **Earnings** — calendrier officiel (Finnhub US, Yahoo EU/UK), consensus,
   historique battre/manquer, dates de publication réelles via les dépôts **8-K de
   la SEC**, impact mesuré sur le cours (clôtures J-1 → J+1).

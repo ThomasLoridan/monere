@@ -193,7 +193,7 @@ recherche) avec **repli automatique Yahoo chart API** (sans clé, réel, US+EU).
 symboles) — jamais un prix.
 
 **Endpoints** : quotes unitaires/batch (cache 15 s, concurrence bornée à 5
-pour respecter les 60 req/min Finnhub), candles par plage (1D→5Y, TTL adapté),
+pour respecter les 60 req/min Finnhub), candles par plage (1D→MAX : 1D, 1W, 1M, 3M, 6M, YTD, 1Y, 5Y, MAX — TTL adapté),
 indices avec spark intraday, composition d'indice (Finnhub payant → repli
 Wikipedia parsé et sourcé → sinon erreur explicite), listing complet par place,
 profil + ratios réels (P/E, PEG, EPS, dividende, bêta, 52 sem., capitalisation),
