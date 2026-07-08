@@ -3926,8 +3926,26 @@ input[type='range'].slider::-moz-range-thumb {
   height: calc(100vh - 72px);
   max-height: none;
 }
+/* Colonnes indépendantes : la page ne défile plus d'un bloc — la carte
+   centrale garde sa hauteur fixe (scroll interne) et le panneau de droite
+   défile seul, séparé par un filet. */
+[data-device='native'] .dn-main {
+  overflow: hidden;
+}
 [data-device='native'] .dn-right {
   width: 330px;
+  height: calc(100vh - 72px);
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  padding-left: 28px;
+  scrollbar-width: thin;
+}
+[data-device='native'] .dn-right::-webkit-scrollbar {
+  width: 5px;
+}
+[data-device='native'] .dn-right::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
 }
 /* Respiration horizontale du contenu dans la colonne large */
 [data-device='native'] .dn-content-card .appbar {
