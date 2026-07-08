@@ -84,9 +84,11 @@ jobs:
       packages: write
     strategy:
       matrix:
-        service: [gateway, auth, market, news, earnings, smart, ai]
+        service: [gateway, auth, market, news, earnings, smart, ai, web]
     steps:
       - uses: actions/checkout@v4
+      # amd64 + arm64 : les images tournent aussi sur les VM ARM (Oracle A1…)
+      - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -96,8 +98,9 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: infra/docker/service.Dockerfile
+          file: infra/docker/${{ matrix.service == 'web' && 'web.Dockerfile' || 'service.Dockerfile' }}
           build-args: SERVICE=${{ matrix.service }}
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ghcr.io/${{ github.repository }}/monere-${{ matrix.service }}:${{ github.ref_name }}
