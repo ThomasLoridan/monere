@@ -145,6 +145,40 @@ for (const [name, dir, color] of services) {
   children.push(child);
 }
 
+// ── Tunnel public automatique (lien stable GitHub Pages) ─────
+// `npm run dev` suffit : si cloudflared est installé, le tunnel démarre et
+// l'URL est publiée sur la page https://thomasloridan.github.io/monere/.
+// Désactivable avec MONERE_NO_TUNNEL=1.
+if (!process.env.MONERE_NO_TUNNEL) {
+  const cfPath = `${process.env.HOME}/.local/bin:${process.env.PATH}`;
+  const hasCf =
+    spawnSync('cloudflared', ['--version'], {
+      stdio: 'ignore',
+      env: { ...process.env, PATH: cfPath },
+    }).status === 0;
+  if (hasCf) {
+    const share = spawn('node', ['scripts/share.mjs'], {
+      cwd: root,
+      env: { ...childEnv, PATH: cfPath },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const prefix = `\x1b[94m[share   ]\x1b[0m `;
+    for (const stream of [share.stdout, share.stderr]) {
+      stream.on('data', (buf) =>
+        String(buf)
+          .split('\n')
+          .filter(Boolean)
+          .forEach((l) => process.stdout.write(prefix + l + '\n')),
+      );
+    }
+    children.push(share);
+  } else {
+    console.log(
+      '  (cloudflared introuvable — pas de tunnel public ; installez-le pour activer le lien stable)',
+    );
+  }
+}
+
 const shutdown = () => {
   console.log('\n→ Arrêt des services…');
   for (const c of children) c.kill('SIGTERM');

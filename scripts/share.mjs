@@ -15,7 +15,7 @@
  * Usage : npm run share   (la stack doit tourner : npm run dev)
  */
 import { spawn } from 'node:child_process';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,6 +34,16 @@ function envToken() {
 }
 
 async function publishUrl(url) {
+  // Copie locale : la page démo (docs/index.html) lit ce fichier — utile en
+  // local et gardé en phase avec la version publiée sur GitHub Pages.
+  try {
+    writeFileSync(
+      path.join(root, 'docs', 'app-url.json'),
+      JSON.stringify({ url, updatedAt: new Date().toISOString() }, null, 2) + '\n',
+    );
+  } catch {
+    /* non bloquant */
+  }
   const token = envToken();
   if (!token) {
     console.log('\n⚠ GITHUB_TOKEN absent de .env — URL non publiée sur GitHub Pages.');

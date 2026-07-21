@@ -15,6 +15,20 @@ IA et suivi « smart money » (Congrès US, 13F, insiders).
 > Yahoo Finance, SEC EDGAR, Chambre des représentants US). Quand une source est
 > indisponible, l'app affiche « Données indisponibles » — jamais de données inventées.
 
+## 🔗 Accéder à l'application
+
+**→ https://thomasloridan.github.io/monere/**
+
+Ce lien — toujours en ligne — présente le produit (visite guidée interactive) et
+affiche en direct l'état du serveur :
+
+- **Serveur en ligne** : le bouton « Accéder à l'application » ouvre l'app.
+- **Serveur hors ligne** : l'application tourne sur le poste de son créateur
+  (hébergement à coût zéro, exposé par tunnel sécurisé) et n'est donc pas
+  disponible 24/7. La page démo reste explorable et détecte automatiquement le
+  retour en ligne. Un déploiement cloud 24/7 est documenté dans
+  [docs/DEPLOY-ORACLE.md](docs/DEPLOY-ORACLE.md).
+
 ---
 
 ## Fonctionnalités
@@ -52,7 +66,9 @@ npm run dev
 2. détecte Docker : s'il tourne → Postgres + Redis en conteneurs ; sinon →
    **mode local sans dépendance** (SQLite + cache mémoire) ;
 3. prépare la base (Prisma generate/push/seed) ;
-4. lance les 7 micro-services + le frontend.
+4. lance les 7 micro-services + le frontend ;
+5. si `cloudflared` est installé, démarre le tunnel public et publie l'URL sur
+   la page démo (désactivable avec `MONERE_NO_TUNNEL=1`).
 
 - Frontend : http://localhost:5173
 - Gateway API : http://localhost:8080/api/health
@@ -136,23 +152,23 @@ exigent `x-internal-key` et ne sont jamais proxifiées par le gateway.
 | `npm run db:seed` | (Re)crée l'admin si absent |
 | `npm run cap:add:ios -w apps/web` | Génère le projet iOS natif (Capacitor) |
 
-## Lien public stable (démo)
+## Lien public stable & page démo
 
-```bash
-npm run dev     # la stack
-npm run share   # tunnel Cloudflare + publication de l'URL
-```
-
-`npm run share` ouvre un tunnel vers le frontend et publie l'URL courante dans
-[docs/app-url.json](docs/app-url.json). La page GitHub Pages
-**https://thomasloridan.github.io/monere/** lit ce fichier et redirige : le lien
-partagé ne change jamais, même quand le tunnel redémarre. Configuration (une fois) :
+`npm run dev` démarre aussi le tunnel Cloudflare (si `cloudflared` est installé)
+et publie l'URL courante dans [docs/app-url.json](docs/app-url.json) — `npm run
+share` reste disponible pour le lancer seul. La page GitHub Pages
+**https://thomasloridan.github.io/monere/** est une page de démonstration
+complète (visite guidée + indicateur en ligne/hors ligne) : elle lit ce fichier,
+vérifie que l'application répond réellement, et propose le bouton « Accéder à
+l'application ». Le lien partagé ne change jamais, même quand le tunnel
+redémarre. Configuration (une fois) :
 
 1. GitHub → Settings → Pages → « Deploy from a branch » → `main` / `/docs` ;
 2. un token fine-grained (permission *Contents: Read and write* sur ce repo)
    dans `.env` : `GITHUB_TOKEN=github_pat_…`
 
-> Le lien n'est actif que quand la stack tourne (la page l'indique sinon).
+> Quand la stack ne tourne pas, la page l'indique (« Serveur hors ligne ») et
+> reste utile : présentation, visite guidée, lien vers le code.
 
 ## CI/CD & images Docker
 
