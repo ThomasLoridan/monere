@@ -338,8 +338,9 @@ mot de passe qu'une fois) · images Docker non-root · `npm audit` bloquant en C
 1. `npm run db:seed` (ou premier `npm run dev`) crée l'admin avec l'e-mail
    `ADMIN_EMAIL` du `.env` et un mot de passe aléatoire **affiché une seule
    fois** dans le terminal.
-2. Connexion avec ces identifiants → **Réglages → Administration** ou
-   `http://localhost:5173/#/admin`.
+2. Connexion avec ces identifiants → **Réglages → Administration** ou le
+   chemin `#/admin` (sur l'URL publique de l'app, ou `http://localhost:5173`
+   en local).
 3. Changer le mot de passe (« Mot de passe oublié » avec l'e-mail admin).
 4. Les identifiants du poste actuel sont consignés dans
    `docs/CREDENTIALS-LOCAL.md` (non versionné).
